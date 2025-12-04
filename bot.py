@@ -1,6 +1,5 @@
 import telebot
 from flask import Flask, request
-import os
 
 TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
 DOMAIN = "https://worker-production-cf41a.up.railway.app"
@@ -8,16 +7,13 @@ DOMAIN = "https://worker-production-cf41a.up.railway.app"
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
-
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.send_message(message.chat.id, "Bot is working! 😎")
 
-
 @bot.message_handler(func=lambda msg: True)
 def echo(message):
     bot.send_message(message.chat.id, message.text)
-
 
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
@@ -25,14 +21,11 @@ def webhook():
     bot.process_new_updates([update])
     return "OK", 200
 
-
 @app.route('/', methods=['GET'])
 def index():
     bot.remove_webhook()
     bot.set_webhook(url=f"{DOMAIN}/{TOKEN}")
     return "Webhook set!", 200
 
-
 if __name__ == '__main__':
-    PORT = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=PORT)
+    app.run(host="0.0.0.0", port=10000)
