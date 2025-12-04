@@ -1,7 +1,6 @@
 import telebot
 import os
 import requests
-from flask import Flask, request
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -9,8 +8,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 HF_API_KEY = os.getenv("HF_API_KEY")
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
-app = Flask(__name__)
 
+# ---------- OpenAI ----------
 def ask_openai(prompt):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
@@ -21,22 +20,27 @@ def ask_openai(prompt):
     res = requests.post(url, json=data, headers=headers)
     return res.json()["choices"][0]["message"]["content"]
 
+# ---------- Gemini ----------
 def ask_gemini(prompt):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
     data = {"contents":[{"parts":[{"text": prompt}]}]}
     res = requests.post(url, json=data)
     return res.json()["candidates"][0]["content"]["parts"][0]["text"]
 
+# ---------- HuggingFace (FIXED) ----------
 def ask_hf(prompt):
-    url = "https://api-inference.huggingface.co/models/gpt2"
+    url = "https://api-inference.huggingface.co/models/google/flan-t5-base"
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
     data = {"inputs": prompt}
+
     res = requests.post(url, headers=headers, json=data)
+
     try:
         return res.json()[0]["generated_text"]
     except:
-        return "HF error"
+        return "HF error (model busy or invalid key)"
 
+# ---------- Bot Modes ----------
 current_mode = {}
 
 @bot.message_handler(commands=['start'])
@@ -81,14 +85,4 @@ def ai_chat(msg):
 
     bot.reply_to(msg, reply)
 
-# -----------------------------
-# 🔥 FLASK WEBHOOK ROUTE
-# -----------------------------
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    update = request.get_data().decode("utf-8")
-    bot.process_new_updates([telebot.types.Update.de_json(update)])
-    return "OK", 200
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+bot.polling()
