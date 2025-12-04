@@ -7,25 +7,30 @@ DOMAIN = "https://worker-production-cf41a.up.railway.app"
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
-@app.route(f'/{TOKEN}', methods=['POST'])
-def webhook():
-    json_data = request.stream.read().decode("utf-8")
-    update = telebot.types.Update.de_json(json_data)
-    bot.process_new_updates([update])
-    return "OK", 200
 
-@app.route('/', methods=['GET'])
-def home():
-    return "Bot is running!", 200
-
-# Handlers
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(message.chat.id, "Bot is alive on Railway! 🚀")
+    bot.send_message(message.chat.id, "Bot is working! 😎")
 
-@bot.message_handler(func=lambda m: True)
+
+@bot.message_handler(func=lambda msg: True)
 def echo(message):
     bot.send_message(message.chat.id, message.text)
 
-# ▶️ DO NOT USE app.run() on Railway
-# Railway will run it automatically using Gunicorn (Procfile)
+
+@app.route('/' + TOKEN, methods=['POST'])
+def webhook():
+    update = telebot.types.Update.de_json(request.data.decode('utf-8'))
+    bot.process_new_updates([update])
+    return "OK", 200
+
+
+@app.route('/', methods=['GET'])
+def index():
+    bot.remove_webhook()
+    bot.set_webhook(url=f"{DOMAIN}/{TOKEN}")
+    return "Webhook set!", 200
+
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=10000)
