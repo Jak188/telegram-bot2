@@ -1,2 +1,6 @@
 pyTelegramBotAPI
 requests
+httpx
+fastapi
+uvicorn
+tenacity
