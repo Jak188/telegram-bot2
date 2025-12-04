@@ -2,7 +2,7 @@ import telebot
 from flask import Flask, request
 
 TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
-DOMAIN = "https://worker-production-cf41a.up.railway.app"
+DOMAIN = "https://web-production-47f8f.up.railway.app"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -13,8 +13,7 @@ def start(message):
 
 @bot.message_handler(func=lambda msg: True)
 def echo(message):
-    if message.text not in ["/start"]:
-        bot.send_message(message.chat.id, message.text)
+    bot.send_message(message.chat.id, message.text)
 
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
