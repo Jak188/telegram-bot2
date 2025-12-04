@@ -18,11 +18,20 @@ def webhook():
 def home():
     return "Telegram bot is running!", 200
 
+# ---------------- Commands -----------------
+
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "Bot is active!")
+    bot.reply_to(message, "🤖 Bot ተነስቷል! ዝግጁ ነኝ።")
 
-# ------------ IMPORTANT --------------
+# ---------------- Any Text Handler -----------------
+
+@bot.message_handler(func=lambda message: True)
+def echo(message):
+    bot.send_message(message.chat.id, f"መልዕክትህ ተቀባ: {message.text}")
+
+# ---------------- Webhook Setup -----------------
+
 if __name__ == "__main__":
     PORT = int(os.environ.get("PORT", 8080))
     bot.remove_webhook()
