@@ -13,7 +13,8 @@ def start(message):
 
 @bot.message_handler(func=lambda msg: True)
 def echo(message):
-    bot.send_message(message.chat.id, message.text)
+    if message.text not in ["/start"]:
+        bot.send_message(message.chat.id, message.text)
 
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
