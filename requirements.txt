@@ -5,3 +5,4 @@ fastapi
 uvicorn
 tenacity
 flask
+gunicorn
