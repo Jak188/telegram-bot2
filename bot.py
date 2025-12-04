@@ -1,6 +1,9 @@
 import telebot
 import os
 import requests
+from flask import Flask, request
+
+app = Flask(__name__)
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -8,6 +11,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 HF_API_KEY = os.getenv("HF_API_KEY")
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+current_mode = {}
 
 def ask_openai(prompt):
     url = "https://api.openai.com/v1/chat/completions"
@@ -35,36 +39,34 @@ def ask_hf(prompt):
     except:
         return "HF error"
 
-current_mode = {}
-
 @bot.message_handler(commands=['start'])
 def start(msg):
-    bot.reply_to(msg,
+    bot.reply_to(msg, 
 """
-🤖 3 AI available:
+🤖 3 የAI ሞዴሎች ዝርዝር:
 
 🔹 /openai  
 🔹 /gemini  
 🔹 /hf  
 
-Type anything to chat!
+ይፃፉ እና ተናገሩ! 🤖✨
 """
 )
 
 @bot.message_handler(commands=['openai'])
 def set_openai(msg):
     current_mode[msg.chat.id] = "openai"
-    bot.reply_to(msg, "✔ OpenAI activated!")
+    bot.reply_to(msg, "✔ OpenAI ተነሳ!")
 
 @bot.message_handler(commands=['gemini'])
 def set_gemini(msg):
     current_mode[msg.chat.id] = "gemini"
-    bot.reply_to(msg, "✔ Gemini activated!")
+    bot.reply_to(msg, "✔ Gemini ተነሳ!")
 
 @bot.message_handler(commands=['hf'])
 def set_hf(msg):
     current_mode[msg.chat.id] = "hf"
-    bot.reply_to(msg, "✔ HuggingFace activated!")
+    bot.reply_to(msg, "✔ HuggingFace ተነሳ!")
 
 @bot.message_handler(func=lambda m: True)
 def ai_chat(msg):
@@ -79,4 +81,12 @@ def ai_chat(msg):
 
     bot.reply_to(msg, reply)
 
-bot.polling()
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    update = request.get_json()
+    if update:
+        bot.process_new_updates([telebot.types.Update.de_json(update)])
+    return "OK", 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
