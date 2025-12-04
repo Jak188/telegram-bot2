@@ -3,3 +3,4 @@ requests
 httpx
 fastapi
 uvicorn
+flask
