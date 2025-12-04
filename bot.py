@@ -1,121 +1,115 @@
+from fastapi import FastAPI, Request
+import httpx
 import os
-import telebot
-from flask import Flask, request
-import requests
 
-# Load environment variables
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-HF_API_KEY = os.getenv("HF_API_KEY")
+TOKEN = os.getenv("BOT_TOKEN")  # Put this in Railway variables
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+HF_KEY = os.getenv("HF_API_KEY")
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN, threaded=False)
-app = Flask(__name__)
+app = FastAPI()
 
-# -----------------------------
-# AI Functions
-# -----------------------------
+active_model = "openai"  # default model
 
-def ask_openai(prompt):
-    try:
-        url = "https://api.openai.com/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
-        data = {
+# -------------------- SEND MESSAGE TO TELEGRAM --------------------
+async def send_message(chat_id, text):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    async with httpx.AsyncClient() as client:
+        await client.post(url, json={"chat_id": chat_id, "text": text})
+
+# -------------------- OPENAI MODEL --------------------
+async def run_openai(prompt):
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {OPENAI_KEY}"}
+
+    async with httpx.AsyncClient() as client:
+        r = await client.post(url, json={
             "model": "gpt-4o-mini",
             "messages": [{"role": "user", "content": prompt}]
-        }
-        res = requests.post(url, json=data, headers=headers)
-        return res.json()["choices"][0]["message"]["content"]
-    except:
-        return "❌ OpenAI error"
+        }, headers=headers)
 
-def ask_gemini(prompt):
+    return r.json()["choices"][0]["message"]["content"]
+
+# -------------------- HUGGINGFACE MODEL --------------------
+async def run_hf(prompt):
+    url = "https://api-inference.huggingface.co/models/google/flan-t5-large"
+    headers = {"Authorization": f"Bearer {HF_KEY}"}
+
+    async with httpx.AsyncClient() as client:
+        r = await client.post(url, json={"inputs": prompt}, headers=headers)
+
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
-        data = {"contents":[{"parts":[{"text": prompt}]}]}
-        res = requests.post(url, json=data)
-        return res.json()["candidates"][0]["content"]["parts"][0]["text"]
+        return r.json()[0]["generated_text"]
     except:
-        return "❌ Gemini error"
+        return "HF error"
 
-def ask_hf(prompt):
+# -------------------- GEMINI MODEL --------------------
+async def run_gemini(prompt):
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={GEMINI_KEY}"
+
+    async with httpx.AsyncClient() as client:
+        r = await client.post(url, json={
+            "contents": [{"parts": [{"text": prompt}]}]
+        })
+
     try:
-        url = "https://api-inference.huggingface.co/models/gpt2"
-        headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-        data = {"inputs": prompt}
-        res = requests.post(url, headers=headers, json=data)
-        return res.json()[0]["generated_text"]
+        return r.json()["candidates"][0]["content"]["parts"][0]["text"]
     except:
-        return "❌ HuggingFace error"
+        return "Gemini error"
 
+# -------------------- HANDLE SWITCH COMMANDS --------------------
+async def switch_model(chat_id, text):
+    global active_model
 
-# User mode memory
-current_mode = {}
+    if text == "/openai":
+        active_model = "openai"
+        await send_message(chat_id, "✓ OpenAI activated!")
+        return True
 
+    if text == "/hf":
+        active_model = "hf"
+        await send_message(chat_id, "✓ HuggingFace activated!")
+        return True
 
-# -----------------------------
-# COMMANDS
-# -----------------------------
-@bot.message_handler(commands=['start'])
-def start(msg):
-    bot.reply_to(msg,
-"""
-🤖 3 AI available:
+    if text == "/gemini":
+        active_model = "gemini"
+        await send_message(chat_id, "✓ Gemini activated!")
+        return True
 
-🔹 /openai  
-🔹 /gemini  
-🔹 /hf  
+    return False
 
-Type anything to chat!
-"""
-)
+# -------------------- MAIN WEBHOOK HANDLER --------------------
+@app.post("/webhook")
+async def webhook(request: Request):
+    data = await request.json()
 
-@bot.message_handler(commands=['openai'])
-def set_openai(msg):
-    current_mode[msg.chat.id] = "openai"
-    bot.reply_to(msg, "✔ OpenAI activated!")
+    if "message" not in data:
+        return {"ok": True}
 
-@bot.message_handler(commands=['gemini'])
-def set_gemini(msg):
-    current_mode[msg.chat.id] = "gemini"
-    bot.reply_to(msg, "✔ Gemini activated!")
+    chat_id = data["message"]["chat"]["id"]
+    text = data["message"].get("text", "")
 
-@bot.message_handler(commands=['hf'])
-def set_hf(msg):
-    current_mode[msg.chat.id] = "hf"
-    bot.reply_to(msg, "✔ HuggingFace activated!")
+    # Switch model
+    if await switch_model(chat_id, text):
+        return {"ok": True}
 
+    # Run model
+    if active_model == "openai":
+        reply = await run_openai(text)
 
-# -----------------------------
-# MAIN CHAT HANDLER
-# -----------------------------
-@bot.message_handler(func=lambda m: True)
-def chat(msg):
-    mode = current_mode.get(msg.chat.id, "openai")
+    elif active_model == "hf":
+        reply = await run_hf(text)
 
-    if mode == "openai":
-        resp = ask_openai(msg.text)
-    elif mode == "gemini":
-        resp = ask_gemini(msg.text)
+    elif active_model == "gemini":
+        reply = await run_gemini(text)
+
     else:
-        resp = ask_hf(msg.text)
+        reply = "Model error"
 
-    bot.reply_to(msg, resp)
+    await send_message(chat_id, reply)
+    return {"ok": True}
 
-
-# -----------------------------
-# WEBHOOK HANDLER
-# -----------------------------
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    json_data = request.get_data().decode("utf-8")
-    update = telebot.types.Update.de_json(json_data)
-    bot.process_new_updates([update])
-    return "OK", 200
-
-
-# -----------------------------
-# START FLASK
-# -----------------------------
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+# -------------------- ROOT FOR TESTING --------------------
+@app.get("/")
+async def root():
+    return {"status": "bot running"}
