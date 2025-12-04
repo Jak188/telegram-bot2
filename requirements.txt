@@ -3,4 +3,3 @@ requests
 httpx
 fastapi
 uvicorn
-update
