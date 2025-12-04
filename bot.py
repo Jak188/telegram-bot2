@@ -1,5 +1,6 @@
 import telebot
 from flask import Flask, request
+import os
 
 TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
 DOMAIN = "https://worker-production-cf41a.up.railway.app"
@@ -33,4 +34,5 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=10000)
+    PORT = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=PORT)
