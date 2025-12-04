@@ -2,9 +2,8 @@ import telebot
 from flask import Flask, request
 
 # 🤖 የእርስዎ የቦት እና የዶሜይን መረጃ (TOKEN and DOMAIN Information)
-# እነዚህን እንደ ቀድሞው ይጠቀሙ
 TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
-DOMAIN = "https://worker-production-cf41a.up.railway.app" # ይህ የእርስዎ Railway ዶሜይን ነው
+DOMAIN = "https://worker-production-cf41a.up.railway.app"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -15,23 +14,35 @@ def start(message):
     """የ'/start' ትዕዛዝ ሲላክ የሚሰራ ተግባር"""
     bot.send_message(message.chat.id, "Bot is now working! Welcome! 😊")
 
-# --- 2. Enhanced Message Handler (Echo and Keywords) ---
+# --- 2. /help command handler ---
+@bot.message_handler(commands=['help'])
+def help_command(message):
+    """የ'/help' ትዕዛዝ ሲላክ የሚሰራ ተግባር"""
+    help_text = (
+        "🤖 እኔ Hanita Bot ነኝ! እነዚህን ትዕዛዞች መጠቀም ትችላለህ:\n\n"
+        "*/start*: ቦቱን ለማስጀመር እና ለመቀበያ መልዕክት ለማግኘት።\n"
+        "*/help*: ይህንን የመረጃ ዝርዝር ለማየት።\n\n"
+        "👉 እንዲሁም ለሚከተሉት ቃላት ምላሽ እሰጣለሁ:\n"
+        "• 'Hi', 'Selam', 'Salam'\n"
+        "• 'Endet nesh', 'How are you'\n"
+        "• 'Thank you', 'Thanks'"
+    )
+    bot.send_message(message.chat.id, help_text)
+
+# --- 3. Enhanced Message Handler (Echo and Keywords) ---
 @bot.message_handler(func=lambda m: True)
 def handle_messages(message):
     """
     ማንኛውም መልእክት ሲመጣ የሚሰራ ተግባር።
-    - ለተወሰኑ ቃላት ምላሽ ይሰጣል
-    - ለሌሎች መልዕክቶች Echo ያደርጋል
     """
     
-    # መልእክቱን ወደ ትናንሽ ፊደላት (lowercase) ይቀይሩት ለትክክለኛ ንጽጽር
     text = message.text.lower()
     chat_id = message.chat.id
-    response = None # የመልስ መጀመሪያ
+    response = None
 
     # የቃላት ምላሽ ሰንጠረዥ (Keyword Response Table)
     if "hi" in text or "selam" in text or "salam" in text:
-        response = "ሰላም! እንዴት ልረዳህ እችላለሁ? `/start` የሚለውን በመጠቀም መጀመር ይችላሉ።"
+        response = "ሰላም! እንዴት ልረዳህ እችላለሁ? `/help` ብለህ በመላክ የሚገኙ ትዕዛዞችን ማየት ትችላለህ።"
     
     elif "thank you" in text or "thanks" in text or "amesegnalehu" in text:
         response = "በደስታ! ሌላ ጥያቄ ካለህ ጠይቀኝ።"
@@ -41,17 +52,15 @@ def handle_messages(message):
 
     # ከላይ ከተጠቀሱት ቃላት ውጪ ከሆነ
     if response is None:
-        # መልዕክቱ በጣም አጭር ከሆነ መልሰው ይላኩት (Echo)
         if len(message.text) > 0 and len(message.text) < 15: 
             response = message.text
         else:
-            # ረጅም ወይም ውስብስብ መልእክት ከሆነ
-            response = "መልዕክትህ ደርሶኛል! ይቅርታ፣ እስካሁን ይህንን አልረዳም።"
+            response = "መልዕክትህ ደርሶኛል! ይቅርታ፣ እስካሁን ይህንን አልረዳም። `/help` የሚለውን ተጠቀም።"
 
     bot.send_message(chat_id, response)
 
 
-# --- 3. Webhook Receiver for Telegram Updates ---
+# --- 4. Webhook Receiver for Telegram Updates ---
 @app.route('/' + TOKEN, methods=['POST'])
 def receive_update():
     """ቴሌግራም አዲስ ዝመናዎችን ሲልክ የሚቀበል ዩአርኤል"""
@@ -59,7 +68,7 @@ def receive_update():
     bot.process_new_updates([update])
     return "OK", 200
 
-# --- 4. Webhook Setter for Initial Setup ---
+# --- 5. Webhook Setter for Initial Setup ---
 @app.route('/', methods=['GET'])
 def set_webhook():
     """
@@ -69,6 +78,4 @@ def set_webhook():
     bot.set_webhook(url=f"{DOMAIN}/{TOKEN}")
     return "Webhook set!", 200
 
-# --- 5. Application Runner ---
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+# 🔴 Application Runner ተወግዷል ምክንያቱም Gunicorn ይጠቀማል
