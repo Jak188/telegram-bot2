@@ -1,5 +1,6 @@
 pyTelegramBotAPI
 Flask
 requests
-fastAPI
 httpx
+fastapi
+uvicorn
