@@ -1,33 +1,52 @@
 import telebot
 from flask import Flask, request
+from openai import OpenAI
 
-API_TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"  # 🔥 Token ይቀይሩ እኔውን አትጠቀሙ
-WEBHOOK_URL = "https://web-production-47f8f.up.railway.app"  # 🔥 Railway DOMAIN ይግባ
+API_TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
+WEBHOOK_URL = "https://web-production-47f8f.up.railway.app"
+
+client = OpenAI(api_key="YOUR_OPENAI_KEY")
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 app = Flask(__name__)
 
 # -------------------------------
-# የመጀመሪያ መልዕክት
+# Start Command
 # -------------------------------
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(
         message,
-        f"👋 ሰላም {message.from_user.first_name}!\nBot ትክክል ተጀምሯል ✔️"
+        f"👋 ሰላም {message.from_user.first_name}!\nAI Bot ተዘጋጅቶ ተጀምሯል 🚀"
     )
 
 # -------------------------------
-# መደበኛ መልስ
+# AI Reply
 # -------------------------------
 @bot.message_handler(func=lambda msg: True)
-def echo_all(message):
-    bot.reply_to(message, f"🤖 ተቀብያለሁ: {message.text}")
+def ai_chat(message):
+    user_text = message.text
+
+    try:
+        answer = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": user_text}]
+        )
+
+        if not answer or not answer.choices:
+            bot.send_message(message.chat.id, "⚠️ AI መልስ አልመጣም!")
+            return
+
+        reply = answer.choices[0].message["content"]
+        bot.send_message(message.chat.id, reply)
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"⚠️ Error: {e}")
 
 # -------------------------------
-# Webhook setup
+# Webhook
 # -------------------------------
-@app.route('/' , methods=['POST'])
+@app.route("/", methods=['POST'])
 def webhook():
     json_str = request.get_data().decode('utf-8')
     update = telebot.types.Update.de_json(json_str)
