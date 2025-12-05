@@ -69,3 +69,24 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+    # AI reply
+@bot.message_handler(func=lambda msg: True)
+def ai_chat(message):
+
+    user_id = message.chat.id
+
+    if user_id not in registered_users:
+        bot.send_message(user_id, "Please /register first!")
+        return
+
+    # generate AI response safely
+    answer = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": message.text}]
+    )
+
+    # handle NoneType safely
+    reply = answer.choices[0].message["content"] if answer and answer.choices else "⚠️ OpenAI መልስ አልመጣም!"
+
+    # send back to user
+    bot.send_message(user_id, reply)
