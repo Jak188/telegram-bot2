@@ -35,3 +35,5 @@ def start(message):
 @bot.message_handler(func=lambda m: True)
 def echo(message):
     bot.send_message(message.chat.id, message.text)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
