@@ -3,7 +3,8 @@ from flask import Flask, request
 
 # 🤖 የእርስዎ የቦት እና የዶሜይን መረጃ (TOKEN and DOMAIN Information)
 TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
-DOMAIN = "https://worker-production-cf41a.up.railway.app"
+# 🔴 አዲሱ DOMAIN
+DOMAIN = "https://web-production-47f8f.up.railway.app" 
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -78,4 +79,4 @@ def set_webhook():
     bot.set_webhook(url=f"{DOMAIN}/{TOKEN}")
     return "Webhook set!", 200
 
-# 🔴 Application Runner ተወግዷል ምክንያቱም Gunicorn ይጠቀማል
+# 🔴 Application Runner (app.run) ተወግዷል ምክንያቱም Gunicorn በ Procfile በኩል ይጠቀማል
