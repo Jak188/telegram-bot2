@@ -3,64 +3,68 @@ import telebot
 from flask import Flask, request
 from openai import OpenAI
 
-API_TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
-WEBHOOK_URL = "https://web-production-47f8f.up.railway.app"
+# -----------------------------
+# TOKENS (Replace these)
+# -----------------------------
+API_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"      # 🔥 Change this
+WEBHOOK_URL = "https://your-domain.up.railway.app"   # 🔥 Replace with Railway domain
 
+# -----------------------------
+# OpenAI Client (Environment)
+# -----------------------------
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 app = Flask(__name__)
 
-# -------------------------------
-# Start Command
-# -------------------------------
+# -----------------------------
+# Start command
+# -----------------------------
 @bot.message_handler(commands=['start'])
-def send_welcome(message):
+def start_message(message):
     bot.reply_to(
         message,
-        f"👋 ሰላም {message.from_user.first_name}!\nAI Bot ተዘጋጅቶ ተጀምሯል 🚀"
+        f"👋 ሰላም {message.from_user.first_name}!\nAI Bot ተጀምሯል 🚀"
     )
 
-# -------------------------------
-# AI Reply
-# -------------------------------
+# -----------------------------
+# Main Chat Handler
+# -----------------------------
 @bot.message_handler(func=lambda msg: True)
-def ai_chat(message):
-    user_text = message.text
-
+def chat_with_ai(message):
     try:
-        answer = client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": user_text}]
+            messages=[
+                {"role": "user", "content": message.text}
+            ]
         )
 
-        if not answer or not answer.choices:
-            bot.send_message(message.chat.id, "⚠️ AI መልስ አልመጣም!")
-            return
+        # ✅ Correct Response Extract
+        reply = response.choices[0].message.content
 
-        reply = answer.choices[0].message["content"]
         bot.send_message(message.chat.id, reply)
 
     except Exception as e:
-        bot.send_message(message.chat.id, f"⚠️ Error: {e}")
+        bot.send_message(message.chat.id, f"⚠ Error: {e}")
 
-# -------------------------------
-# Webhook
-# -------------------------------
-@app.route("/", methods=['POST'])
+# -----------------------------
+# Webhook Receiver
+# -----------------------------
+@app.route('/', methods=['POST'])
 def webhook():
     json_str = request.get_data().decode('utf-8')
     update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "OK", 200
 
-@app.route("/")
+@app.route('/')
 def home():
-    return "Bot is running!", 200
+    return "Bot Running OK ✔", 200
 
-# -------------------------------
-# Run Flask
-# -------------------------------
+# -----------------------------
+# Run Webhook
+# -----------------------------
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url=WEBHOOK_URL)
