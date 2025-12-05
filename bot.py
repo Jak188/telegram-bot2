@@ -1,92 +1,48 @@
 import os
 import telebot
-from openai import OpenAI
 from flask import Flask, request
+from openai import OpenAI
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-API_KEY = os.getenv("OPENAI_API_KEY")
+API_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-bot = telebot.TeleBot(BOT_TOKEN)
-client = OpenAI(api_key=API_KEY)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Store registered users
-registered_users = {}
+bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
+app = Flask(__name__)
 
-# /start
 @bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(
-        message,
-        "👋 Welcome!\n\nPlease register first using /register"
-    )
+def send_welcome(message):
+    bot.reply_to(message, f"👋 ሰላም {message.from_user.first_name}!\nAI Bot ተጀምሯል 🚀")
 
-# /register
-@bot.message_handler(commands=['register'])
-def register(message):
-    msg = bot.reply_to(message, "Send your full name:")
-    bot.register_next_step_handler(msg, save_name)
-
-def save_name(message):
-    full_name = message.text
-    user_id = message.chat.id
-    registered_users[user_id] = full_name
-    bot.send_message(user_id, "✅ Registered successfully!")
-
-# AI chat
 @bot.message_handler(func=lambda msg: True)
-def ai_chat(message):
+def echo_all(message):
+    try:
+        answer = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": message.text}]
+        )
 
-    user_id = message.chat.id
+        reply = answer.choices[0].message.content
+        bot.send_message(message.chat.id, reply)
 
-    if user_id not in registered_users:
-        bot.send_message(user_id, "❗ Please /register first.")
-        return
+    except Exception as e:
+        bot.send_message(message.chat.id, f"⚠️ Error: {str(e)}")
 
-    # Send to OpenAI
-    ai = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "user", "content": message.text}
-        ]
-    )
-
-    reply = ai.choices[0].message["content"]
-    bot.send_message(user_id, reply)
-
-# ------------------ Flask Webhook Server ------------------
-app = Flask(name)
-
-@app.route('/' + BOT_TOKEN, methods=['POST'])
+@app.route("/", methods=["POST"])
 def webhook():
-    json_str = request.get_data().decode("UTF-8")
+    json_str = request.get_data().decode('utf-8')
     update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "OK", 200
 
-@app.route('/')
+@app.route("/")
 def home():
-    return "Bot is running!", 200
+    return "Bot Running OK!", 200
 
-if name == "main":
-    app.run(host="0.0.0.0", port=5000)
-    # AI reply
-@bot.message_handler(func=lambda msg: True)
-def ai_chat(message):
+if __name__ == "__main__":
+    bot.remove_webhook()
+    bot.set_webhook(url=WEBHOOK_URL)
 
-    user_id = message.chat.id
-
-    if user_id not in registered_users:
-        bot.send_message(user_id, "Please /register first!")
-        return
-
-    # generate AI response safely
-    answer = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": message.text}]
-    )
-
-    # handle NoneType safely
-    reply = answer.choices[0].message["content"] if answer and answer.choices else "⚠️ OpenAI መልስ አልመጣም!"
-
-    # send back to user
-    bot.send_message(user_id, reply)
+    port = int(os.getenv("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
