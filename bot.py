@@ -7,7 +7,7 @@ DOMAIN = "https://web-production-47f8f.up.railway.app"
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# --- Webhook Receiver ---
+# --- 1. Webhook Receiver ---
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
     json_str = request.data.decode("utf-8")
@@ -15,21 +15,21 @@ def webhook():
     bot.process_new_updates([update])
     return "OK", 200
 
-# --- Webhook Setter ---
+# --- 2. Webhook Setter ---
 @app.route('/', methods=['GET'])
 def index():
     bot.remove_webhook()
     bot.set_webhook(url=f"{DOMAIN}/{TOKEN}")
     return "Webhook is set!", 200
 
-# --- Command Handler: /start ---
+# --- 3. Command Handler: /start ---
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.send_message(message.chat.id, "Bot is working! Welcome! 😎")
 
-# --- Message Handler: Echo ---
+# --- 4. Message Handler: Echo ---
 @bot.message_handler(func=lambda m: True)
 def echo(message):
     bot.send_message(message.chat.id, message.text)
 
-# 🔴 app.run የለም
+# 🔴🔴🔴 'if __name__ == '__main__': ... app.run(...)' የሚለው ብሎክ መጥፋቱን ያረጋግጡ! 🔴🔴🔴
