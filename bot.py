@@ -1,9 +1,9 @@
 import telebot
 from flask import Flask, request
-# 'import os' ተወግዷል ምክንያቱም አሁን አያስፈልግም
+# 'import os' ተወግዷል
 
 TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
-DOMAIN = "https://web-production-47f8f.up.railway.app"
+DOMAIN = "https://web-production-47f8f.up.railway.app" # አዲሱ ዶሜይን
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
@@ -35,7 +35,6 @@ def start(message):
 # --- 4. Message Handler (Echo) ---
 @bot.message_handler(func=lambda m: True)
 def echo(message):
-    # አሁን ያለውን 'echo' ተግባር እንጠብቅ
     bot.send_message(message.chat.id, message.text)
 
-# 🔴🔴🔴 Development Server (app.run) ሙሉ በሙሉ ተወግዷል! 🔴🔴🔴
+# 🔴 Development Server (app.run) ሙሉ በሙሉ ተወግዷል!
