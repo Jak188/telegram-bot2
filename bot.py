@@ -1,85 +1,63 @@
-import os
 import telebot
-from flask import Flask, request
-from db import DB
-from ai import ask_ai
-from utils import send_long_message, track_user
+from telebot import types
+from openai import OpenAI
 
-TOKEN = os.environ.get("TOKEN")
-DOMAIN = os.environ.get("DOMAIN")  # e.g. https://web-production-xxxx.up.railway.app
-ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
+BOT_TOKEN = "YOUR_BOT_TOKEN"
+API_KEY = "YOUR_OPENAI_API_KEY"
 
-bot = telebot.TeleBot(TOKEN, threaded=False)
-app = Flask(__name__)
-db = DB("bot.db")   # sqlite file
+bot = telebot.TeleBot(BOT_TOKEN)
+client = OpenAI(api_key=API_KEY)
 
-# webhook receiver
-@app.route('/' + TOKEN, methods=['POST'])
-def webhook():
-    json_str = request.data.decode("utf-8")
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return "OK", 200
+# የተመዘገቡ ዝርዝር
+registered_users = {}
 
-# set webhook (visit once)
-@app.route('/', methods=['GET'])
-def index():
-    bot.remove_webhook()
-    bot.set_webhook(url=f"{DOMAIN}/{TOKEN}")
-    return "Webhook is set!", 200
-
-# /start
+# /start command
 @bot.message_handler(commands=['start'])
 def start(message):
-    track_user(message.from_user.id)
-    bot.send_message(message.chat.id, "Bot is working! Welcome! 😎")
+    bot.reply_to(
+        message,
+        "Bot is working! Welcome! 😎\n\nPlease /register first to use AI."
+    )
 
-# /register simple example
+# /register command
 @bot.message_handler(commands=['register'])
-def register_cmd(message):
-    user_id = message.from_user.id
-    if db.user_exists(user_id):
-        bot.send_message(message.chat.id, "You are already registered.")
-        return
-    msg = bot.send_message(message.chat.id, "Send your full name:")
+def register(message):
+    msg = bot.reply_to(message, "Send your full name:")
     bot.register_next_step_handler(msg, save_name)
 
 def save_name(message):
-    user_id = message.from_user.id
-    name = message.text
-    db.add_user(user_id, name)
-    bot.send_message(message.chat.id, "Registered — thank you!")
+    full_name = message.text
+    user_id = message.chat.id
 
-# AI handler (non-command)
-@bot.message_handler(func=lambda m: True)
-def handle_all(message):
-    track_user(message.from_user.id)
-    text = message.text
-    # simple local reply path: if user registered -> AI, else ask to register
-    if not db.user_exists(message.from_user.id):
-        bot.send_message(message.chat.id, "Please /register first to use AI.")
+    registered_users[user_id] = full_name
+
+    bot.send_message(user_id, f"Registered — thank you, {full_name}!")
+
+# ግብዣ መሞላት ምንጭ AI መልስ
+@bot.message_handler(func=lambda message: True)
+def ai_chat(message):
+    user_id = message.chat.id
+
+    # ካልተመዘገቡ አትፍቀድም
+    if user_id not in registered_users:
+        bot.send_message(user_id, "🛑 Please /register first to use AI.")
         return
-    # send to AI (ask_ai is stub/wrapper)
-    try:
-        reply = ask_ai(text, user_id=str(message.from_user.id))
-    except Exception as e:
-        reply = "Sorry, AI error: " + str(e)
-    # ensure we don't exceed Telegram message length
-    send_long_message(bot, message.chat.id, reply)
 
-# photo handler
-@bot.message_handler(content_types=['photo'])
-def photo_handler(message):
-    user_id = message.from_user.id
-    if not db.user_exists(user_id):
-        bot.send_message(message.chat.id, "Please /register first before sending photos.")
-        return
-    file_id = message.photo[-1].file_id
-    # forward to admin
-    bot.send_photo(ADMIN_ID, file_id, caption=f"Photo from {message.from_user.username or user_id}")
+    user_text = message.text
 
-if __name__ == "__main__":
-    # DO NOT call bot.polling() when using webhook
-    # Use app.run only for local debugging. Production uses gunicorn
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    # GPT መልስ
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a helpful Telegram AI assistant."},
+            {"role": "user", "content": user_text}
+        ]
+    )
+
+    ai_reply = response.choices[0].message.content
+
+    # Bot መልስ
+    bot.send_message(user_id, ai_reply)
+
+# polling start
+bot.infinity_polling()
