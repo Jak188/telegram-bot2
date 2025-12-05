@@ -5,7 +5,7 @@ from openai import OpenAI
 API_TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
 WEBHOOK_URL = "https://web-production-47f8f.up.railway.app"
 
-client = OpenAI(api_key="YOUR_OPENAI_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 app = Flask(__name__)
