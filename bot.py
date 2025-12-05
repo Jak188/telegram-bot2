@@ -1,45 +1,73 @@
 import telebot
-from flask import Flask, request
-import os
+from telebot import types
 from openai import OpenAI
+from flask import Flask, request
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-API_KEY = os.getenv("OPENAI_API_KEY")
+BOT_TOKEN = "YOUR_BOT_TOKEN"
+API_KEY = "YOUR_OPENAI_API_KEY"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 client = OpenAI(api_key=API_KEY)
 
+# save user names
+registered_users = {}
+
+# /start
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.reply_to(
+        message,
+        "Bot is working! Welcome! 😎\n\nPlease /register first to use AI."
+    )
+
+# /register
+@bot.message_handler(commands=['register'])
+def register(message):
+    msg = bot.reply_to(message, "Send your full name:")
+    bot.register_next_step_handler(msg, save_name)
+
+def save_name(message):
+    full_name = message.text
+    user_id = message.chat.id
+    registered_users[user_id] = full_name
+
+    bot.send_message(user_id, "Registered — thank you! 🙌")
+
+# AI reply
+@bot.message_handler(func=lambda msg: True)
+def ai_chat(message):
+
+    user_id = message.chat.id
+
+    if user_id not in registered_users:
+        bot.send_message(user_id, "Please /register first.")
+        return
+
+    # generate AI response
+    answer = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "user", "content": message.text}
+        ]
+    )
+
+    bot.send_message(user_id, answer.choices[0].message["content"])
+
+
+# ---------- Webhook Server ----------
 app = Flask(__name__)
 
-# Telegram Webhook endpoint
 @app.route('/' + BOT_TOKEN, methods=['POST'])
 def webhook():
-    json_update = request.get_data().decode('utf-8')
-    update = telebot.types.Update.de_json(json_update)
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "OK", 200
 
-
-# Start command
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(message, "🔥 Bot is online and working!")
-
-# Normal text messages → OpenAI
-@bot.message_handler(func=lambda m: True)
-def chat(message):
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": message.text}]
-    )
-    bot.reply_to(message, response.choices[0].message.content)
-
-
-# Flask home
 @app.route('/')
-def home():
+def index():
     return "Bot is running!", 200
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)
