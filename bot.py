@@ -1,6 +1,7 @@
 import telebot
 from telebot import types
 from openai import OpenAI
+from flask import Flask, request
 
 BOT_TOKEN = "YOUR_BOT_TOKEN"
 API_KEY = "YOUR_OPENAI_API_KEY"
@@ -8,10 +9,10 @@ API_KEY = "YOUR_OPENAI_API_KEY"
 bot = telebot.TeleBot(BOT_TOKEN)
 client = OpenAI(api_key=API_KEY)
 
-# የተመዘገቡ ዝርዝር
+# save user names
 registered_users = {}
 
-# /start command
+# /start
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.reply_to(
@@ -19,7 +20,7 @@ def start(message):
         "Bot is working! Welcome! 😎\n\nPlease /register first to use AI."
     )
 
-# /register command
+# /register
 @bot.message_handler(commands=['register'])
 def register(message):
     msg = bot.reply_to(message, "Send your full name:")
@@ -28,36 +29,45 @@ def register(message):
 def save_name(message):
     full_name = message.text
     user_id = message.chat.id
-
     registered_users[user_id] = full_name
 
-    bot.send_message(user_id, f"Registered — thank you, {full_name}!")
+    bot.send_message(user_id, "Registered — thank you! 🙌")
 
-# ግብዣ መሞላት ምንጭ AI መልስ
-@bot.message_handler(func=lambda message: True)
+# AI reply
+@bot.message_handler(func=lambda msg: True)
 def ai_chat(message):
+
     user_id = message.chat.id
 
-    # ካልተመዘገቡ አትፍቀድም
     if user_id not in registered_users:
-        bot.send_message(user_id, "🛑 Please /register first to use AI.")
+        bot.send_message(user_id, "Please /register first.")
         return
 
-    user_text = message.text
-
-    # GPT መልስ
-    response = client.chat.completions.create(
+    # generate AI response
+    answer = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are a helpful Telegram AI assistant."},
-            {"role": "user", "content": user_text}
+            {"role": "user", "content": message.text}
         ]
     )
 
-    ai_reply = response.choices[0].message.content
+    bot.send_message(user_id, answer.choices[0].message["content"])
 
-    # Bot መልስ
-    bot.send_message(user_id, ai_reply)
 
-# polling start
-bot.infinity_polling()
+# ---------- Webhook Server ----------
+app = Flask(__name__)
+
+@app.route('/' + BOT_TOKEN, methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "OK", 200
+
+@app.route('/')
+def index():
+    return "Bot is running!", 200
+
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)
