@@ -3,7 +3,7 @@ from flask import Flask, request
 # 'import os' ተወግዷል
 
 TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
-DOMAIN = "https://web-production-47f8f.up.railway.app" # አዲሱ ዶሜይን
+DOMAIN = "https://web-production-47f8f.up.railway.app" # ትክክለኛው ዶሜይን
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
