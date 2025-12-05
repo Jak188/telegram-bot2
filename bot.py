@@ -35,4 +35,4 @@ def start(message):
 def echo(message):
     bot.send_message(message.chat.id, message.text)
 
-# 🔴🔴🔴 'if __name__ == '__main__': ... app.run(...)' የሚለው ኮድ የለም። 🔴🔴🔴
+# 🔴 'if __name__ == '__main__': ... app.run(...)' የሚለው ኮድ የለም።
