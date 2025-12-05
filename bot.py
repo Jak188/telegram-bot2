@@ -5,20 +5,23 @@ import os
 TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
 DOMAIN = "https://web-production-47f8f.up.railway.app"
 
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
+# Only process updates from Telegram
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
-    update = telebot.types.Update.de_json(request.data.decode("utf-8"))
+    json_str = request.data.decode("utf-8")
+    update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "OK", 200
 
+# Set webhook only once
 @app.route('/', methods=['GET'])
 def index():
     bot.remove_webhook()
     bot.set_webhook(url=f"{DOMAIN}/{TOKEN}")
-    return "Webhook set!", 200
+    return "Webhook is set!", 200
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -30,4 +33,4 @@ def echo(message):
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)
