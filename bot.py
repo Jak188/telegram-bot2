@@ -3,8 +3,8 @@ from telebot import types
 from openai import OpenAI
 from flask import Flask, request
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
-API_KEY = "YOUR_OPENAI_API_KEY"
+BOT_TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
+API_KEY = "-proj-vfRQkQ0LTyoHx2NGM5DsuTHvZcjOg-tKbc4CPK3uYHjx2z1kQFrRh1DpgzvV8whH3Q7zfqR02GT3BlbkFJ3AanY2Bbui8wE5MdIEOAZjJ2bm4Y4PiAfUmDOEXXC9w85ircJ09j30FMFpFwiSJOsichwuqy4A"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 client = OpenAI(api_key=API_KEY)
