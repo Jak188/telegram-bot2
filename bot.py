@@ -1,57 +1,65 @@
 import os
-import telebot
-from flask import Flask, request
-from openai import OpenAI
+import requests
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
-# --- Environment Variables (Railway will load these)
-API_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+TOKEN = os.environ.get("BOT_TOKEN")
+GROUP_ID = os.environ.get("GROUP_ID")
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
-app = Flask(__name__)
+app = FastAPI()
 
+API_URL = f"https://api.telegram.org/bot{TOKEN}"
 
-# ---------------- START COMMAND ----------------
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, f"👋 ሰላም {message.from_user.first_name}!\nAI Bot ተጀምሯል 🚀")
-
-
-# ---------------- HANDLE USER MESSAGE ----------------
-@bot.message_handler(func=lambda msg: True)
-def ai_reply(message):
-    try:
-        answer = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": message.text}]
-        )
-
-        reply = answer.choices[0].message.content
-        bot.send_message(message.chat.id, reply)
-
-    except Exception as e:
-        bot.send_message(message.chat.id, f"⚠️ Error: {e}")
+# -------------------------
+# Send Message Function
+# -------------------------
+def send_message(chat_id, text):
+    url = f"{API_URL}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+    requests.post(url, json=payload)
 
 
-# ---------------- WEBHOOK HANDLER ----------------
-@app.route("/", methods=["POST"])
-def webhook():
-    json_str = request.get_data().decode('utf-8')
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return "OK", 200
-
-
-@app.route("/")
+# -------------------------
+# Root
+# -------------------------
+@app.get("/")
 def home():
-    return "Bot Running OK!", 200
+    return {"status": "Bot is running..."}
 
 
-# ---------------- START FLASK SERVER ----------------
-if __name__ == "__main__":
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
+# -------------------------
+# Telegram Webhook Handler
+# -------------------------
+@app.post("/webhook")
+async def telegram_webhook(request: Request):
+    data = await request.json()
 
-    port = int(os.getenv("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    # Ignore empty updates (avoid NoneType errors)
+    if not data:
+        return JSONResponse({"ok": True})
+
+    message = data.get("message")
+    if not message:
+        return JSONResponse({"ok": True})
+
+    chat_id = message["chat"]["id"]
+    text = message.get("text", "")
+
+    # -------------------------
+    # Bot Commands Logic
+    # -------------------------
+
+    if text == "/start":
+        send_message(chat_id,
+                     f"👋 Hello! Bot is working successfully on Railway.")
+        return {"ok": True}
+
+    # Example custom reply
+    if "hi" in text.lower():
+        send_message(chat_id, "Hello! 😊")
+        return {"ok": True}
+
+    # Default echo
+    send_message(chat_id, f"You said: {text}")
+
+    return {"ok": True}
