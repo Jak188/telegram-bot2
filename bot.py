@@ -1,13 +1,16 @@
 import telebot
 from flask import Flask, request
 
+# የእርስዎ ቶከን
 TOKEN = "8332730337:AAEqwWC-PsmwwOP2KvdWkZhY1Bqvo59b1aU"
+# የእርስዎ Railway ዶሜይን
 DOMAIN = "https://web-production-47f8f.up.railway.app" 
 
+# Flask እና TeleBotን ማስጀመር
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# --- 1. Webhook Receiver ---
+# --- 1. Webhook Receiver (መልእክት መቀበያ) ---
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
     json_str = request.data.decode("utf-8")
@@ -15,7 +18,7 @@ def webhook():
     bot.process_new_updates([update])
     return "OK", 200
 
-# --- 2. Webhook Setter ---
+# --- 2. Webhook Setter (ለማዘጋጀት) ---
 @app.route('/', methods=['GET'])
 def index():
     bot.remove_webhook()
@@ -32,4 +35,4 @@ def start(message):
 def echo(message):
     bot.send_message(message.chat.id, message.text)
 
-# 🔴🔴🔴 ከዚህ በታች ምንም አይነት 'app.run' የሚባል ኮድ አለመኖሩን ያረጋግጡ! 🔴🔴🔴
+# 🔴🔴🔴 'if __name__ == '__main__': ... app.run(...)' የሚለው ኮድ የለም። 🔴🔴🔴
