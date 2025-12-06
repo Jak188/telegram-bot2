@@ -1,65 +1,42 @@
-import os
-import requests
+import telebot
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+import os
 
-TOKEN = os.environ.get("BOT_TOKEN")
-GROUP_ID = os.environ.get("GROUP_ID")
+API_TOKEN = os.getenv("BOT_TOKEN")  # Railway env ውስጥ BOT_TOKEN ይጨምሩ
 
+bot = telebot.TeleBot(API_TOKEN, parse_mode="Markdown")
 app = FastAPI()
 
-API_URL = f"https://api.telegram.org/bot{TOKEN}"
+# -----------------------------------
+# Start command
+# -----------------------------------
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.reply_to(
+        message,
+        f"👋 ሰላም {message.from_user.first_name}!\n🤖 Bot ትክክል ተጀምሯል!"
+    )
 
-# -------------------------
-# Send Message Function
-# -------------------------
-def send_message(chat_id, text):
-    url = f"{API_URL}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
-    requests.post(url, json=payload)
+# -----------------------------------
+# All messages
+# -----------------------------------
+@bot.message_handler(func=lambda message: True)
+def reply_all(message):
+    bot.reply_to(message, f"🤖 ተቀብያለሁ: {message.text}")
 
-
-# -------------------------
-# Root
-# -------------------------
-@app.get("/")
-def home():
-    return {"status": "Bot is running..."}
-
-
-# -------------------------
-# Telegram Webhook Handler
-# -------------------------
-@app.post("/webhook")
-async def telegram_webhook(request: Request):
-    data = await request.json()
-
-    # Ignore empty updates (avoid NoneType errors)
-    if not data:
-        return JSONResponse({"ok": True})
-
-    message = data.get("message")
-    if not message:
-        return JSONResponse({"ok": True})
-
-    chat_id = message["chat"]["id"]
-    text = message.get("text", "")
-
-    # -------------------------
-    # Bot Commands Logic
-    # -------------------------
-
-    if text == "/start":
-        send_message(chat_id,
-                     f"👋 Hello! Bot is working successfully on Railway.")
-        return {"ok": True}
-
-    # Example custom reply
-    if "hi" in text.lower():
-        send_message(chat_id, "Hello! 😊")
-        return {"ok": True}
-
-    # Default echo
-    send_message(chat_id, f"You said: {text}")
-
+# -----------------------------------
+# Webhook route for Telegram
+# -----------------------------------
+@app.post("/")
+async def webhook(request: Request):
+    json_data = await request.json()
+    update = telebot.types.Update.de_json(json_data)
+    bot.process_new_updates([update])
     return {"ok": True}
+
+# -----------------------------------
+# Home route (optional)
+# -----------------------------------
+@app.get("/")
+async def home():
+    return {"status": "Bot is running!"}
