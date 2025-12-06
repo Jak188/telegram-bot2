@@ -3,7 +3,7 @@ from flask import Flask, request
 from openai import OpenAI
 import os
 
-TOKEN = os.getenv("BOT_TOKEN")  # Railway Settings → Variables
+TOKEN = os.getenv("8332730337:AAGSmpyXThEvg11M72biboMo98WWh_1kpYY")  # Railway Settings → Variables
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 
 bot = telebot.TeleBot(TOKEN)
